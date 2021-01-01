@@ -1,189 +1,43 @@
-﻿using System;
-using System.Drawing;
-using MathSupport;
-using CircleCanvas;
-using System.Globalization;
+﻿using CircleCanvas;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 using Utilities;
 
 namespace _083animation
 {
+  /// <summary>
+  /// Solid color disc.
+  /// </summary>
+  public class Disc
+  {
+    public double cx;
+    public double cy;
+    public double radius;
+    public Color color;
+
+    public Disc (double x, double y, double r, Color c)
+    {
+      cx = x;
+      cy = y;
+      radius = r;
+      color = c;
+    }
+  }
+
   public class Animation
   {
-    /// <summary>
-    /// Form data initialization.
-    /// </summary>
-    /// <param name="name">Your first-name and last-name.</param>
-    /// <param name="wid">Initial image width in pixels.</param>
-    /// <param name="hei">Initial image height in pixels.</param>
-    /// <param name="from">Start time (t0)</param>
-    /// <param name="to">End time (for animation length normalization).</param>
-    /// <param name="fps">Frames-per-second.</param>
-    /// <param name="param">Optional text to initialize the form's text-field.</param>
-    /// <param name="tooltip">Optional tooltip = param help.</param>
-    public static void InitParams (out string name, out int wid, out int hei, out double from, out double to, out double fps, out string param, out string tooltip)
-    {
-      // {{
-
-      // Put your name here.
-      name = "Josef Pelikán";
-
-      // Frame size in pixels.
-      wid = 640;
-      hei = 480;
-
-      // Animation.
-      from =  0.0;
-      to   = 10.0;
-      fps  = 25.0;
-
-      // Form params.
-      param = "objects=1200,seed=12,speed=1.0";
-      tooltip = "objects=<int>, seed=<long>, speed=<double>";
-
-      // }}
-    }
-
-    /// <summary>
-    /// Global initialization. Called before each animation batch
-    /// or single-frame computation.
-    /// </summary>
-    /// <param name="width">Width of the future canvas in pixels.</param>
-    /// <param name="height">Height of the future canvas in pixels.</param>
-    /// <param name="start">Start time (t0)</param>
-    /// <param name="end">End time (for animation length normalization).</param>
-    /// <param name="fps">Required fps.</param>
-    /// <param name="param">Text parameter field from the form.</param>
-    public static void InitAnimation (int width, int height, double start, double end, double fps, string param)
-    {
-      // {{ TODO: put your init code here
-
-      // }}
-    }
-
-    /// <summary>
-    /// Draw single animation frame.
-    /// </summary>
-    /// <param name="c">Canvas to draw to.</param>
-    /// <param name="time">Current time in seconds.</param>
-    /// <param name="start">Start time (t0)</param>
-    /// <param name="end">End time (for animation length normalization).</param>
-    /// <param name="param">Optional string parameter from the form.</param>
-    public static void DrawFrame (Canvas c, double time, double start, double end, string param)
-    {
-      // {{ TODO: put your drawing code here
-
-      int objects = 1200;
-      long seed = 144;
-      double speed = 1.0;
-
-      // Parse parameters.
-      Dictionary<string, string> p = Util.ParseKeyValueList(param);
-      if (p.Count > 0)
-      {
-        // objects=<int>
-        if (Util.TryParse(p, "objects", ref objects))
-        {
-          if (objects < 10)
-            objects = 10;
-        }
-
-        // seed=<long>
-        Util.TryParse(p, "seed", ref seed);
-
-        // speed=<double>
-        Util.TryParse(p, "speed", ref speed);
-      }
-
-      int wq = c.Width / 4;
-      int hq = c.Height / 4;
-      int minq = Math.Min(wq, hq);
-      double t;
-      int i, j;
-      double x, y, r;
-
-      c.Clear(Color.Black);
-      c.SetAntiAlias(true);
-
-      // 1st quadrant - anti-aliased disks in a spiral.
-      const int MAX_DISK = 30;
-      for (i = 0, t = 0.0; i < MAX_DISK; i++, t += 0.65)
-      {
-        r = 5.0 + i * (minq * 0.7 - 5.0) / MAX_DISK;
-        c.SetColor(Color.FromArgb((i * 255) / MAX_DISK, 255, 255 - (i * 255) / MAX_DISK));
-        c.FillDisc((float)(wq + r * Math.Sin(t)), (float)(hq + r * Math.Cos(t)), (float)(r * 0.3));
-      }
-
-      // 2nd quadrant - anti-aliased random dots in a heart shape..
-      RandomJames rnd = new RandomJames(seed + (long)((time - start) * 5));
-      double xx, yy, tmp;
-
-      for (i = 0; i < objects; i++)
-      {
-        // This is called "Rejection Sampling"
-        do
-        {
-          x = rnd.RandomDouble(-1.5, 1.5);
-          y = rnd.RandomDouble(-1.0, 1.5);
-          xx = x * x;
-          yy = y * y;
-          tmp = xx + yy - 1.0;
-        } while (tmp * tmp * tmp - xx * yy * y > 0.0);
-
-        c.SetColor(Color.FromArgb(rnd.RandomInteger(200, 255),
-                                  rnd.RandomInteger(120, 220),
-                                  rnd.RandomInteger(120, 220)));
-        c.FillDisc(3.1f * wq + 0.8f * minq * (float)x,
-                   1.2f * hq - 0.8f * minq * (float)y,
-                   rnd.RandomFloat(1.0f, minq * 0.03f));
-      }
-
-      // 4th quadrant - CGG logo.
-      c.SetColor(COLORS[0]);
-      for (i = 0; i < DISC_DATA.Length / 3; i++)
-      {
-        x = DISC_DATA[i, 0] - 65.0;
-        y = DISC_DATA[i, 1] - 65.0;
-        r = DISC_DATA[i, 2];
-        if (i == FIRST_COLOR)
-          c.SetColor(COLORS[1]);
-
-        t = 4.0 * speed * Math.PI * (time - start) / (end - start);
-        double sina = Math.Sin(t);
-        double cosa = Math.Cos(t);
-        double nx =  cosa * x + sina * y;
-        double ny = -sina * x + cosa * y;
-
-        c.FillDisc(3.0f * wq + (float)((nx - 20.0) * 0.018 * minq),
-                   3.0f * hq + (float)(ny * 0.018 * minq),
-                   (float)(r * 0.018 * minq));
-      }
-
-      // 3rd quadrant - jaggy disks.
-      const int DISKS = 12;
-      for (j = 0; j < DISKS; j++)
-        for (i = 0; i < DISKS; i++)
-        {
-          c.SetColor(((i ^ j) & 1) == 0 ? Color.White : Color.Blue);
-          c.FillDisc(wq + (i - DISKS / 2) * (wq * 1.8f / DISKS),
-                     3 * hq + (j - DISKS / 2) * (hq * 1.7f / DISKS),
-                     (((i ^ j) & 15) + 1.0f) / DISKS * minq * 0.08f);
-        }
-
-      // }}
-    }
-
     /// <summary>
     /// CGG logo colors.
     /// </summary>
     protected static Color[] COLORS =
     {
-      Color.FromArgb(0x71, 0x21, 0x6d),
-      Color.FromArgb(0xe8, 0x75, 0x05)
+      Color.FromArgb( 0x71, 0x21, 0x6d ),
+      Color.FromArgb( 0xe8, 0x75, 0x05 )
     };
 
     /// <summary>
-    /// CGG logo geometry { cx, cy, radius }.
+    /// Final discs' geometries { cx, cy, radius }.
     /// </summary>
     protected static double[,] DISC_DATA = new double[,]
     {
@@ -350,5 +204,135 @@ namespace _083animation
     /// Number of disc having the 1st color.
     /// </summary>
     protected const int FIRST_COLOR = 54;
+
+    protected static double minX, maxX, minY, maxY;
+
+    protected static double maxR;
+
+    protected static List<Disc> discs;
+
+    protected static double kxy;
+
+    protected static double dx, dy;
+
+    protected static bool forward = true;
+
+    protected const double SIZE = 0.9;
+
+    protected static void SetViewport (int width, int height)
+    {
+      double k = (width * SIZE) / (maxX - minX);
+      kxy = (height * SIZE) / (maxY - minY);
+      if ( k < kxy ) kxy = k;
+      dx = 0.5 * (width -  (minX + maxX) * kxy);
+      dy = 0.5 * (height - (minY + maxY) * kxy);
+    }
+
+    protected static float X (double x)
+    {
+      return (float)(x * kxy + dx);
+    }
+
+    protected static float Y (double y)
+    {
+      return (float)(y * kxy + dy);
+    }
+
+    /// <summary>
+    /// Initialize form parameters.
+    /// </summary>
+    public static void InitParams (out string name, out int wid, out int hei, out double from, out double to, out double fps, out string param, out string tooltip)
+    {
+      // Author.
+      name = "Josef Pelikán";
+
+      // Single frame.
+      wid = 640;
+      hei = 480;
+
+      // Animation.
+      from = 0.0;
+      to   = 2.0;
+      fps  = 25.0;
+
+      // Form params.
+      param   = "forward";
+      tooltip = "forward[=<bool>] ... if true, animation creates the logo";
+    }
+
+    /// <summary>
+    /// Global initialization. Called before each animation batch
+    /// or single-frame computation.
+    /// </summary>
+    /// <param name="width">Width of future frames in pixels.</param>
+    /// <param name="height">Height of future frames in pixels.</param>
+    /// <param name="start">Start time (t0)</param>
+    /// <param name="end">End time (for animation length normalization).</param>
+    /// <param name="fps">Required fps.</param>
+    /// <param name="param">Text parameter field from the form.</param>
+    public static void InitAnimation (int width, int height, double start, double end, double fps, string param)
+    {
+      // !!!{{ TODO: put your init code here
+
+      // Disc data initialization:
+      minX = minY = Double.MaxValue;
+      maxX = maxY = maxR = Double.MinValue;
+      discs = new List<Disc>();
+
+      for (int i = 0; i < DISC_DATA.Length/3; i++)
+      {
+        double x = DISC_DATA[i, 0];
+        double y = DISC_DATA[i, 1];
+        double r = DISC_DATA[i, 2];
+        discs.Add(new Disc(x, y, r, i < FIRST_COLOR ? COLORS[0] : COLORS[1]));
+        if (x - r < minX) minX = x - r;
+        if (x + r > maxX) maxX = x + r;
+        if (y - r < minY) minY = y - r;
+        if (y + r > maxY) maxY = y + r;
+        if (r > maxR)     maxR = r;
+      }
+
+      SetViewport(width, height);
+
+      // Parse parameters.
+      Dictionary<string, string> p = Util.ParseKeyValueList(param);
+      if (p.Count > 0)
+      {
+        // forward[=<bool>]
+        Util.TryParse(p, "forward", ref forward);
+      }
+
+      // !!!}}
+    }
+
+    /// <summary>
+    /// Draw single animation frame.
+    /// </summary>
+    /// <param name="c">Canvas to draw to.</param>
+    /// <param name="time">Current time in seconds.</param>
+    /// <param name="start">Start time (t0)</param>
+    /// <param name="end">End time (for animation length normalization).</param>
+    /// <param name="param">Optional string parameter from the form.</param>
+    public static void DrawFrame (Canvas c, double time, double start, double end, string param)
+    {
+      // !!!{{ TODO: put your frame-rendering code here
+
+      c.Clear(Color.White);
+      c.SetAntiAlias(true);
+
+      double tim = (time - start) / (end - start);
+      if (!forward)
+        tim = 1.0 - tim;
+      float radius = (float)(maxR * tim);
+
+      foreach (Disc d in discs)
+      {
+        c.SetColor(d.color);
+        float r = (float)(Math.Min(radius, d.radius) * kxy);
+        c.FillDisc(X(d.cx), Y(d.cy), r);
+      }
+
+      // !!!}}
+    }
   }
 }
