@@ -1,0 +1,1 @@
+fast,create,script=SunnyMountains.cs,wid=1500,hei=1000,sun=true,sm=3.0,mm=1.0,polar=350,maxGen=12,sunMinLevel=200,cSun=[255;105;180],cSky=[255;240;245],cSnow=[0;191;255],cHill=[255;127;80],cGreen=[255;250;205]
