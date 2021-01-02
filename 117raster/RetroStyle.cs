@@ -89,8 +89,8 @@ double difference(float r, float g, float b, RGB rgb)
 
   simple_RGBtoHSV(rgb,out h2,out s2,out v2);
   Arith.RGBtoHSV(r, g, b,out h1,out s1,out v1);
-  var x = (Math.Sin(h1) * s1 * v1 - Math.Sin(h2) * s2 * v2);
-  var y = (Math.Cos(h1) * s1 * v1 - Math.Cos(h2) * s2 * v2);
+  var x = (Math.Sin(h1 / 360 * 2 * Math.PI) * s1 * v1 - Math.Sin(h2 / 360 * 2 * Math.PI) * s2 * v2);
+  var y = (Math.Cos(h1 / 360 * 2 * Math.PI) * s1 * v1 - Math.Cos(h2 / 360 * 2 * Math.PI) * s2 * v2);
   var z = (v1 - v2);
   return x * x + y * y + z * z;
 }

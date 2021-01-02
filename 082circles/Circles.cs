@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using CircleCanvas;
 using MathSupport;
+using Utilities;
 
 namespace _082circles
 {
@@ -22,9 +24,100 @@ namespace _082circles
       name    = "Miroslav Valach";
       wid     = 800;
       hei     = 520;
-      param   = "12";
-      tooltip = "<long> .. random seed";
+      param   = "LENGTH_MULTI=2.0,SPIRAL_COUNT=8,RADIUS=20.0,SATURATION=1.0,INTERVAL_BASE=360";
+      tooltip =
+                "<LENGTH_MULTI> .. length of whirlwind" + "/n"
+              + "<SPIRAL_COUNT> .. count of whirlwind" + "/n"
+              + "<RADIUS> .. size of single circle in whirlwind" + "/n"
+              + "<SATURATION> .. color saturation" + "/n"
+              + "<INTERVAL_BASE> .. reverse interval change between circles";
       // }}
+    }
+
+    static void ParseFromParam (Whirlwind whirlwind, string param)
+    {
+      Dictionary<string, string> p = Util.ParseKeyValueList(param);
+
+      double LENGTH_MULTI = 2.0;
+      Util.TryParse(p, "LENGTH_MULTI", ref LENGTH_MULTI);
+      whirlwind.lengthMulti = LENGTH_MULTI;
+
+      double SPIRAL_COUNT = 8;
+      Util.TryParse(p, "SPIRAL_COUNT", ref SPIRAL_COUNT);
+      whirlwind.spiralCount = SPIRAL_COUNT;
+
+      double RADIUS = 20.0;
+      Util.TryParse(p, "RADIUS", ref RADIUS);
+      whirlwind.radius = RADIUS;
+
+      double SATURATION = 1.0;
+      Util.TryParse(p, "SATURATION", ref SATURATION);
+      whirlwind.saturation = SATURATION;
+
+      double INTERVAL_BASE = 360.0;
+      Util.TryParse(p, "INTERVAL_BASE", ref INTERVAL_BASE);
+      whirlwind.interval_base = INTERVAL_BASE;
+    }
+
+    public class Whirlwind
+    {
+      private readonly Canvas canvas;
+
+      public Whirlwind (Canvas canvas)
+      {
+        this.canvas = canvas;
+        xMid = canvas.Width / 2.0;
+        yMid = canvas.Height / 2.0;
+      }
+
+      //Parametrized Values
+      public double lengthMulti = 2;
+      public double spiralCount = 8;
+      public double radius = 20.0;
+      public double saturation = 1.0;
+      public double interval_base = 360;
+
+      // Following values are calculated.
+      public double xMid;
+      public double yMid;
+      public double hue;
+      public double rotation;
+      public double m => length * (2.0 / 3.0) * 10;
+      public double interval_change => Math.PI / interval_base;
+      public double interval(double i) => interval_change * i;
+      public double length => lengthMulti * Math.PI;
+
+      public void DrawWhirlwinds ()
+      {
+        for (double i = 0; i < spiralCount; i++)
+        {
+          double percentage = i / spiralCount;
+          hue = 360 * percentage;
+          rotation = 2 * Math.PI * percentage;
+          SingleWhirlwind();
+        }
+      }
+
+      public void SingleWhirlwind ()
+      {
+        double i = 1;
+        for (double t = 0; t <= length; t += interval(i))
+        {
+          i += 1;
+          (double x, double y) = Whirl(m, t, rotation, xMid, yMid);
+          double r, g, b;
+          Arith.HSVtoRGB(hue, saturation, t / length, out r, out g, out b);
+          canvas.SetColor(Color.FromArgb((int)(r * 255), (int)(g * 255), (int)(b * 255)));
+          canvas.FillDisc((float)x, (float)y, (float)(radius * (t / length)));
+        }
+      }
+    }
+
+    public static (double, double) Whirl(double m, double t, double rotation, double xMid, double yMid)
+    {
+      double x = m * t * Math.Sin(t + rotation) + xMid;
+      double y = m * t * Math.Cos(t + rotation) + yMid;
+      return (x, y);
     }
 
     /// <summary>
@@ -34,84 +127,14 @@ namespace _082circles
     /// <param name="param">Optional string parameter from the form.</param>
     public static void Draw (Canvas c, string param)
     {
-      // {{ TODO: put your drawing code here
-
-      int wq = c.Width  / 4;
-      int hq = c.Height / 4;
-      int minq = Math.Min(wq, hq);
-      double t;
-      int i, j;
-      double x, y, r;
-      RandomJames rnd = new RandomJames();
-
-      c.Clear(Color.Black);
-
-      // Example of even simpler passing of a numeric value through string param.
-      long seed;
-      if (long.TryParse(param, NumberStyles.Number, CultureInfo.InvariantCulture, out seed))
-        rnd.Reset(seed);
-
-      // 1st quadrant - anti-aliased disks in a spiral.
       c.SetAntiAlias(true);
-      const int MAX_DISK = 30;
-      for (i = 0, t = 0.0; i < MAX_DISK; i++, t += 0.65)
-      {
-        r = 5.0 + i * (minq * 0.7 - 5.0) / MAX_DISK;
-        c.SetColor(Color.FromArgb(i * 255 / MAX_DISK, 255, 255 - i * 255 / MAX_DISK));
-        c.FillDisc((float)(wq + r * Math.Sin(t)), (float)(hq + r * Math.Cos(t)), (float)(r * 0.3));
-      }
+      c.Clear(Color.White);
 
-      // 2nd quadrant - anti-aliased random dots in a heart shape..
-      const int MAX_RND_DOTS = 1000;
-      double xx, yy, tmp;
+      Whirlwind whirlwind = new Whirlwind(c);
 
-      for (i = 0; i < MAX_RND_DOTS; i++)
-      {
-        // This is called "Rejection Sampling"
-        do
-        {
-          x = rnd.RandomDouble(-1.5, 1.5);
-          y = rnd.RandomDouble(-1.0, 1.5);
-          xx = x * x;
-          yy = y * y;
-          tmp = xx + yy - 1.0;
-        } while (tmp * tmp * tmp - xx * yy * y > 0.0);
+      ParseFromParam(whirlwind, param);
 
-        c.SetColor(Color.FromArgb(rnd.RandomInteger(200, 255),
-                                  rnd.RandomInteger(120, 220),
-                                  rnd.RandomInteger(120, 220)));
-        c.FillDisc(3.1f * wq + 0.8f * minq * (float)x,
-                   1.2f * hq - 0.8f * minq * (float)y,
-                   rnd.RandomFloat(1.0f, minq * 0.03f));
-      }
-
-      // 4th quadrant - CGG logo.
-      c.SetColor(COLORS[0]);
-      for (i = 0; i < DISC_DATA.Length / 3; i++)
-      {
-        x = DISC_DATA[i, 0];
-        y = DISC_DATA[i, 1];
-        r = DISC_DATA[i, 2];
-        if (i == FIRST_COLOR)
-          c.SetColor(COLORS[1]);
-
-        c.FillDisc(3.0f * wq + (float)((x - 85.0) * 0.018 * minq),
-                   3.0f * hq + (float)((y - 65.0) * 0.018 * minq),
-                   (float)(r * 0.018 * minq));
-      }
-
-      // 3rd quadrant - disk grid.
-      const int DISKS = 12;
-      for (j = 0; j < DISKS; j++)
-        for (i = 0; i < DISKS; i++)
-        {
-          c.SetColor(((i ^ j) & 1) == 0 ? Color.White : Color.Blue);
-          c.FillDisc(wq + (i - DISKS / 2) * (wq * 1.8f / DISKS),
-                     3 * hq + (j - DISKS / 2) * (hq * 1.7f / DISKS),
-                     (((i ^ j) & 15) + 1.0f) / DISKS * minq * 0.08f);
-        }
-
-      // }}
+      whirlwind.DrawWhirlwinds();
     }
 
     /// <summary>
