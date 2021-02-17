@@ -1,14 +1,21 @@
 // Simple script that attempts to generate sun and mountains.
 // It's basically lot of RNG.
 // This one will result in reasonable image.
-// fast,create,script=SunnyMountains.cs,wid=1000,hei=500,sun=true,sm=3.0,mm=1.0,polar=350,maxGen=7,sunMinLevel=200,cSun=[255;255;0],cSky=[135;206;235],cSnow=[255;255;255],cHill=[128;128;128],cGreen=[0;128;0]
+// fast,create,script=SunnyMountains.cs,wid=1000,hei=500,sample=5,sun=true,sm=3.0,mm=1.0,polar=350,maxGen=7,sunMinLevel=200,cSun=[255;255;0],cSky=[135;206;235],cSnow=[255;255;255],cHill=[128;128;128],cGreen=[0;128;0]
 // This one was used to debug most of the code.
-// fast,create,script=SunnyMountains.cs,wid=1000,hei=500,sun=true,sm=3.0,mm=1.0,polar=350,maxGen=5,sunMinLevel=0,cSun=[255;255;0],cSky=[135;206;235],cSnow=[255;255;255],cHill=[128;128;128],cGreen=[0;128;0]
+// fast,create,script=SunnyMountains.cs,wid=1000,hei=500,sample=5,sun=true,sm=3.0,mm=1.0,polar=350,maxGen=5,sunMinLevel=0,cSun=[255;255;0],cSky=[135;206;235],cSnow=[255;255;255],cHill=[128;128;128],cGreen=[0;128;0]
 // Cursed.
-// fast,create,script=SunnyMountains.cs,wid=1000,hei=500,sun=true,sm=3.0,mm=1.0,polar=350,maxGen=7,sunMinLevel=200,cSun=[0;0;0],cSky=[255;0;0],cSnow=[255;255;255],cHill=[128;0;128],cGreen=[0;0;0]
+// fast,create,script=SunnyMountains.cs,wid=1000,hei=500,sample=5,sun=true,sm=3.0,mm=1.0,polar=350,maxGen=7,sunMinLevel=200,cSun=[0;0;0],cSky=[255;0;0],cSnow=[255;255;255],cHill=[128;0;128],cGreen=[0;0;0]
+// Sands.
+// fast,create,script=SunnyMountains.cs,wid=1500,hei=1000,sample=5,sun=true,sm=3.0,mm=1.0,polar=350,maxGen=12,sunMinLevel=200,cSun=[255;105;180],cSky=[255;240;245],cSnow=[0;191;255],cHill=[255;127;80],cGreen=[255;250;205]
 using System;
 using System.CodeDom;
 using System.Diagnostics;
+
+
+int super_sample_size = 1; //cycle is from negative to positive
+int super_sample_size_div = 9; //each pixel is 9
+int super_sample_size_mult_dimension = 3; //each dimension is 3 times larger
 
 // Internal variables
 Random MountainRNG = new Random();
@@ -187,8 +194,7 @@ void CreateMountains(int width, int height, bool randomizeSunLocation, int maxGe
 }
 
 
-// SunnyMountainsShow.
-formula.pixelCreate = (in ImageContext ic, out float R, out float G, out float B) =>
+(float, float, float) CreatePixel(in ImageContext ic, in int x, in int y)
 {
   // Get polar level
   int polarLocation = PolarLevel;
@@ -201,7 +207,7 @@ formula.pixelCreate = (in ImageContext ic, out float R, out float G, out float B
 
   (float, float, float) colorTuple;
   // Is mountain ?
-  (int, int) maxPoint = GetHigherMountainPoint(ic.x, ic.y);
+  (int, int) maxPoint = GetHigherMountainPoint(x, y);
   if (maxPoint.Item1 != -1)
   {
     Color snowColor = Color.White;
@@ -213,7 +219,7 @@ formula.pixelCreate = (in ImageContext ic, out float R, out float G, out float B
       hillColor = Color.FromArgb(fg2[0], fg2[1], fg2[2]);
     if (ic.context.TryGetValue("cGreen", out object fgo3) && fgo3 is int[] fg3)
       greenColor = Color.FromArgb(fg3[0], fg3[1], fg3[2]);
-    colorTuple = PrintMountain(ic.x, ic.y, polarLocation, mm, snowColor, hillColor, greenColor);
+    colorTuple = PrintMountain(x, y, polarLocation, mm, snowColor, hillColor, greenColor);
     // Make each generation look little different.
     colorTuple.Item1 *= (1f + maxPoint.Item2 / 10f);
     colorTuple.Item2 *= (1f + maxPoint.Item2 / 10f);
@@ -227,13 +233,52 @@ formula.pixelCreate = (in ImageContext ic, out float R, out float G, out float B
       sunColor = Color.FromArgb(fg1[0], fg1[1], fg1[2]);
     if (ic.context.TryGetValue("cSky", out object fgo2) && fgo2 is int[] fg2)
       skyColor = Color.FromArgb(fg2[0], fg2[1], fg2[2]);
-    colorTuple = PrintSun(ic.x, ic.y, sm, sunColor, skyColor);
+    colorTuple = PrintSun(x, y, sm, sunColor, skyColor);
+  }
+  return colorTuple;
+}
+
+// SunnyMountainsShow.
+formula.pixelCreate = (in ImageContext ic, out float R, out float G, out float B) =>
+{
+  int m_x = 0;
+  int m_y = 0;
+  if (super_sample_size == 0)
+  {
+    m_x = (ic.x + 1) * super_sample_size_mult_dimension;
+    m_y = (ic.y + 1) * super_sample_size_mult_dimension;
+  }
+  else
+  {
+    m_x = (ic.x + super_sample_size) * super_sample_size_mult_dimension;
+    m_y = (ic.y + super_sample_size) * super_sample_size_mult_dimension;
   }
 
-  R = colorTuple.Item1;
-  G = colorTuple.Item2;
-  B = colorTuple.Item3;
+  // very naive implementation without resizing
+  (float, float, float) finalColorTuple = (0,0,0);
+
+  for (int x = - super_sample_size; x <= super_sample_size; x++)
+  {
+    for (int y = -super_sample_size; y <= super_sample_size; y++)
+    {
+      (float, float, float) colorTuple = CreatePixel(ic, m_x + x, m_y + y);
+      finalColorTuple.Item1 += colorTuple.Item1;
+      finalColorTuple.Item2 += colorTuple.Item2;
+      finalColorTuple.Item3 += colorTuple.Item3;
+    }
+  }
+
+  R = finalColorTuple.Item1 / super_sample_size_div;
+  G = finalColorTuple.Item2 / super_sample_size_div;
+  B = finalColorTuple.Item3 / super_sample_size_div;
 };
+
+int resize_sample(int original_value)
+{
+  if (super_sample_size == 0)
+    return (original_value + 2 * 1) * super_sample_size_mult_dimension;
+  return (original_value + 2 * super_sample_size) * super_sample_size_mult_dimension;
+}
 
 formula.contextCreate = (in Bitmap input, in string param) =>
 {
@@ -249,6 +294,12 @@ formula.contextCreate = (in Bitmap input, in string param) =>
   int learnHeight = 0;
   Util.TryParse(parameters, "hei", ref learnHeight);
 
+  //supersampling
+  super_sample_size_mult_dimension = 3; //each dimension is 3 times larger
+  Util.TryParse(parameters, "sample", ref super_sample_size_mult_dimension);
+  super_sample_size = ((super_sample_size_mult_dimension + 1) / 2) - 1; //cycle is from negative to positive
+  super_sample_size_div = super_sample_size_mult_dimension * super_sample_size_mult_dimension; //each pixel is dim * dim
+
   //Randomize Sun Location
   bool sunLocation = true;
   Util.TryParse(parameters, "sun", ref sunLocation);
@@ -257,20 +308,22 @@ formula.contextCreate = (in Bitmap input, in string param) =>
   //Minimum Sun Location
   int sunMinLevel = 0;
   Util.TryParse(parameters, "sunMinLevel", ref sunMinLevel);
+  sunMinLevel = resize_sample(sunMinLevel);
   sc["sunMinLevel"] = sunMinLevel;
+  //Polar Level Location
+  int polarLocation = PolarLevel;
+  Util.TryParse(parameters, "polar", ref polarLocation);
+  polarLocation = resize_sample(polarLocation);
+  sc["polar"] = polarLocation;
 
   //Generation needs width and height
   double sunMulti = SunMulti;
   Util.TryParse(parameters, "sm", ref sunMulti);
-  sc["sm"] = sunLocation;
+  sc["sm"] = sunMulti;
   double mountMulti = MountMulti;
   Util.TryParse(parameters, "mm", ref mountMulti);
-  sc["mm"] = sunLocation;
+  sc["mm"] = mountMulti;
 
-  //Polar Level Location
-  int polarLocation = PolarLevel;
-  Util.TryParse(parameters, "polar", ref polarLocation);
-  sc["polar"] = polarLocation;
 
   //Max Level Location
   int maxGen = MaxGenDefault;
@@ -307,9 +360,10 @@ formula.contextCreate = (in Bitmap input, in string param) =>
     sc["cGreen"] = new int[] { (int)R, (int)G, (int)B };
 
   //This will generate sun and mountains.
-  CreateMountains(learnWidth, learnHeight, sunLocation, maxGen, sunMinLevel);
+  CreateMountains(resize_sample(learnWidth), resize_sample(learnHeight), sunLocation, maxGen, sunMinLevel);
 
   sc["tooltip"] = "Width and Height were tested only as 1000 to 500, other should do fine hopefully.\n" +
+                  "sample=<int> .. super sampling square dimension (default 3, keep as odd >= 1, even has undefined behaviour), it should be for n entered it will result in calculating color of pixel from 3x3 square centered on pixel.\n" +
                   "sun=<bool> .. randomize sun location (default true)\n" +
                   "sm=<double> .. sun multiplication constant (default 3.0), lower values == larger sun, larger values == smaller sun\n" +
                   "mm=<double> .. mountain multiplication constant (default 1.0), not recommended to change\n" +
