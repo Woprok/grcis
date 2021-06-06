@@ -11,6 +11,614 @@ using Utilities;
 
 namespace _087fireworks
 {
+  #region MyFireworks
+
+  public class Vertex
+  {
+    public float TextureX, TextureY;
+    public Vector3 Color;
+    public Vector3d Normal, Point;
+    public float Size;
+    public bool HasTexture, HasColor, HasNormal, HasPointerSize;
+
+    public Vertex(float textureX, float textureY, float size, Vector3 color, Vector3d normal, Vector3d point, bool hasTexture, bool hasColor, bool hasNormal, bool hasPointerSize)
+    {
+      TextureX = textureX;
+      TextureY = textureY;
+      Size = size;
+      Color = color;
+      Normal = normal;
+      Point = point;
+      HasTexture = hasTexture;
+      HasColor = hasColor;
+      HasNormal = hasNormal;
+      HasPointerSize = hasPointerSize;
+    }
+  }
+
+  public static class Helpers
+  {
+    public static Vector3 ColorVectorFrom(int hexaColor)
+    {
+      float r = (hexaColor >> 16) & 0xff;
+      float g = (hexaColor >> 8) & 0xff;
+      float b = hexaColor & 0xff;
+      return new Vector3(r / 255f, g / 255f, b / 255f);
+    }
+
+    public static unsafe void FillVertex(this Vertex vtx, ref float* ptr)
+    {
+      if (vtx.HasTexture)
+        DefaultRenderObject.Fill(ref ptr, vtx.TextureX, vtx.TextureY);
+      if (vtx.HasColor)
+        DefaultRenderObject.Fill(ref ptr, ref vtx.Color);
+      if (vtx.HasNormal)
+        DefaultRenderObject.Fill(ref ptr, ref vtx.Normal);
+      if (vtx.HasPointerSize)
+        *ptr++ = vtx.Size;
+      DefaultRenderObject.Fill(ref ptr, ref vtx.Point);
+    }
+
+    public static RandomJames DefaultRandom = new RandomJames();
+    public static double AirResist => 1.225d;
+    public static double Gravity => 9.81d;
+    public static Vector3 RedColor => new Vector3(1f, 0f, 0f);
+    public static Vector3 GreenColor => new Vector3(0f, 1f, 0f);
+    public static Vector3 BlueColor => new Vector3(0f, 0f, 1f);
+    public static Vector3d NormalDown => new Vector3d(0, -1, 0);
+    public static Vector3d NormalUp => new Vector3d(0, 1, 0);
+    public static Vector3d NormalFront => new Vector3d(0, 0, -1);
+    public static Vector3d NormalLeft => new Vector3d(-1, 0, 0);
+    public static Vector3d NormalRight => new Vector3d(1, 0, 0);
+    public static Vector3d NormalBack => new Vector3d(0, 0, 1);
+
+  public static unsafe void CubeDraw (double lowSize, double upperSize, double downHeight, double upheight,
+      Vector3d positionBase,
+      ref float* ptr, bool txt, bool col, bool normal, bool ptsize, Vector3 bottom, Vector3 front, Vector3 right,
+      Vector3 left, Vector3 back, Vector3d normalized)
+  {
+      double angle = Vector3d.CalculateAngle(NormalUp, normalized);
+      Vector3d axis = Vector3d.Cross(NormalUp, normalized);
+      var rot = Matrix4d.Rotate(axis, angle);
+      if (normalized == NormalUp || -normalized == NormalUp)
+      {
+        rot = Matrix4d.Identity;
+      }
+      //RotateVectors(NormalUp, normalized);
+      // Bottom
+      Vector3d A = new Vector3d(-lowSize, downHeight, lowSize);
+      Vector3d B = new Vector3d(lowSize, downHeight, lowSize);
+      Vector3d C = new Vector3d(lowSize, downHeight, -lowSize);
+      Vector3d D = new Vector3d(-lowSize, downHeight, -lowSize);
+      A = Vector3d.Transform(A, rot);
+      B = Vector3d.Transform(B, rot);
+      C = Vector3d.Transform(C, rot);
+      D = Vector3d.Transform(D, rot);
+      // Top
+      Vector3d E = new Vector3d(-upperSize, upheight, upperSize);
+      Vector3d F = new Vector3d(upperSize, upheight, upperSize);
+      Vector3d G = new Vector3d(upperSize, upheight, -upperSize);
+      Vector3d H = new Vector3d(-upperSize, upheight, -upperSize);
+      E = Vector3d.Transform(E, rot);
+      F = Vector3d.Transform(F, rot);
+      G = Vector3d.Transform(G, rot);
+      H = Vector3d.Transform(H, rot);
+      A += positionBase;
+      B += positionBase;
+      C += positionBase;
+      D += positionBase;
+      E += positionBase;
+      F += positionBase;
+      G += positionBase;
+      H += positionBase;
+
+
+
+
+      // Bottom
+      Vertex vtxA = new Vertex(0, 0, 5, bottom, Helpers.NormalDown, A, txt, col, normal, ptsize);
+      Vertex vtxB = new Vertex(0, 0, 5, bottom, Helpers.NormalDown, B, txt, col, normal, ptsize);
+      Vertex vtxC = new Vertex(0, 0, 5, bottom, Helpers.NormalDown, C, txt, col, normal, ptsize);
+      Vertex vtxD = new Vertex(0, 0, 5, bottom, Helpers.NormalDown, D, txt, col, normal, ptsize);
+
+      // Front
+      Vertex vtxFD = new Vertex(0, 0, 5, front, Helpers.NormalFront, D, txt, col, normal, ptsize);
+      Vertex vtxFC = new Vertex(0, 0, 5, front, Helpers.NormalFront, C, txt, col, normal, ptsize);
+      Vertex vtxFG = new Vertex(0, 0, 5, front, Helpers.NormalFront, G, txt, col, normal, ptsize);
+      Vertex vtxFH = new Vertex(0, 0, 5, front, Helpers.NormalFront, H, txt, col, normal, ptsize);
+      // Right
+      Vertex vtxRC = new Vertex(0, 0, 5, right, Helpers.NormalRight, C, txt, col, normal, ptsize);
+      Vertex vtxRB = new Vertex(0, 0, 5, right, Helpers.NormalRight, B, txt, col, normal, ptsize);
+      Vertex vtxRF = new Vertex(0, 0, 5, right, Helpers.NormalRight, F, txt, col, normal, ptsize);
+      Vertex vtxRG = new Vertex(0, 0, 5, right, Helpers.NormalRight, G, txt, col, normal, ptsize);
+      // Left
+      Vertex vtxLD = new Vertex(0, 0, 5, left, Helpers.NormalLeft, D, txt, col, normal, ptsize);
+      Vertex vtxLA = new Vertex(0, 0, 5, left, Helpers.NormalLeft, A, txt, col, normal, ptsize);
+      Vertex vtxLE = new Vertex(0, 0, 5, left, Helpers.NormalLeft, E, txt, col, normal, ptsize);
+      Vertex vtxLH = new Vertex(0, 0, 5, left, Helpers.NormalLeft, H, txt, col, normal, ptsize);
+      // Back
+      Vertex vtxBA = new Vertex(0, 0, 5, back, Helpers.NormalBack, A, txt, col, normal, ptsize);
+      Vertex vtxBB = new Vertex(0, 0, 5, back, Helpers.NormalBack, B, txt, col, normal, ptsize);
+      Vertex vtxBF = new Vertex(0, 0, 5, back, Helpers.NormalBack, F, txt, col, normal, ptsize);
+      Vertex vtxBE = new Vertex(0, 0, 5, back, Helpers.NormalBack, E, txt, col, normal, ptsize);
+
+      vtxA.FillVertex(ref ptr);
+      vtxB.FillVertex(ref ptr);
+      vtxC.FillVertex(ref ptr);
+      vtxD.FillVertex(ref ptr);
+      vtxFD.FillVertex(ref ptr);
+      vtxFC.FillVertex(ref ptr);
+      vtxFG.FillVertex(ref ptr);
+      vtxFH.FillVertex(ref ptr);
+      vtxRC.FillVertex(ref ptr);
+      vtxRB.FillVertex(ref ptr);
+      vtxRF.FillVertex(ref ptr);
+      vtxRG.FillVertex(ref ptr);
+      vtxLD.FillVertex(ref ptr);
+      vtxLA.FillVertex(ref ptr);
+      vtxLE.FillVertex(ref ptr);
+      vtxLH.FillVertex(ref ptr);
+      vtxBA.FillVertex(ref ptr);
+      vtxBB.FillVertex(ref ptr);
+      vtxBF.FillVertex(ref ptr);
+      vtxBE.FillVertex(ref ptr);
+    }
+
+    public static unsafe void UpdateTriangleIndicesForCube (uint triangleCount, ref uint* ptr, uint origin, ref uint index)
+    {
+      for (int i = 0; i < triangleCount; i++)
+      {
+        *ptr++ = origin + 0 + index; //ABC
+        *ptr++ = origin + 1 + index;
+        *ptr++ = origin + 2 + index;
+        *ptr++ = origin + 0 + index; //ACD
+        *ptr++ = origin + 2 + index;
+        *ptr++ = origin + 3 + index;
+        index += 4;
+      }
+    }
+  }
+
+  public class CutSquarePyramidLauncher : Launcher
+  {
+    private readonly Vector3 color;
+    public double LowerSquareSize = 1;
+    public double UpperSquareSize = 0.5;
+    public double Height = 1;
+    public override uint Triangles { get; } = 10;
+    public override uint TriVertices { get; } = 20;
+    public double BaseSpeed { get; } = 40;
+
+    public CutSquarePyramidLauncher (Vector3 color, double freq, Vector3d? pos = null, Vector3d? _aim = null, Vector3d? _up = null)
+      : base(freq, pos, _aim, _up)
+    {
+      this.color = color;
+    }
+    
+    public override unsafe int TriangleVertices (ref float* ptr, ref uint origin, out int stride, bool txt, bool col, bool normal, bool ptsize)
+    {
+      stride = 3;
+      if (txt)
+        stride += 2;
+      if (col)
+        stride += 3;
+      if (normal)
+        stride += 3;
+      if (ptsize)
+        stride++;
+
+      if (ptr != null)
+      {
+        Helpers.CubeDraw(LowerSquareSize, UpperSquareSize, 0, Height, position,
+          ref ptr, txt, col, normal, ptsize, color, color, color, color, color, Helpers.NormalUp);
+      }
+
+      origin += TriVertices;
+      return (int)TriVertices * (stride *= sizeof(float));
+    }
+
+    public override unsafe int TriangleIndices (ref uint* ptr, uint origin)
+    {
+      uint index = 0;
+
+      if (ptr != null)
+      {
+        Helpers.UpdateTriangleIndicesForCube(Triangles / 2, ref ptr, origin, ref index);
+      }
+      return (3 * (int)Triangles) * sizeof(uint);
+    }
+
+    /// <summary>
+    /// Simulate object to the given time.
+    /// </summary>
+    /// <param name="time">Required target time.</param>
+    /// <param name="fw">Simulation context.</param>
+    /// <returns>False in case of expiry.</returns>
+    public override bool Simulate (double time, Fireworks fw)
+    {
+      if (time <= simTime)
+        return true;
+
+      double dt = time - simTime;
+      // generate new particles for the [simTime-time] interval:
+
+      double probability = dt * frequency;
+      while (probability > 1.0 ||
+             rnd.UniformNumber() < probability)
+      {
+        // emit a new particle:
+        Vector3d dir = Geometry.RandomDirectionNormal(rnd, aim, fw.variance);         // random direction around 'aim'
+        Particle p = new Rocket(
+          position,                                     // Position
+          dir * rnd.RandomDouble(0.8, 1.2) * BaseSpeed, // Velocity
+          up,                                           // Target
+          new Vector3(rnd.RandomFloat(0.0f, color.X), rnd.RandomFloat(0.0f, color.Y), rnd.RandomFloat(0.0f, color.Z)), // Color
+          rnd.RandomDouble(0.2, 4.0),                 // Size of Particle ???
+          time,                                       // Time
+          rnd.RandomDouble(2.0, 3.0));               // Age
+        fw.AddParticle(p);
+        probability -= 1.0;
+      }
+
+      simTime = time;
+
+      return true;
+    }
+  }
+
+  public class Rocket : Particle
+  {
+    public double LowerSquareSizeBody = 0.10;
+    public double UpperSquareSizeBody = 0.10;
+    public double HeightBody = 1;
+    public double LowerSquareSizeHead = 0.20;
+    public double UpperSquareSizeHead = Double.Epsilon;
+    public double HeightHead = 0.66;
+
+    public override void OnDescrution (double time, Fireworks fw)
+    {
+      RandomJames rnd = new RandomJames();
+      for (int i = 0; i < 500; i++)
+      {
+        Vector3d dir = Geometry.RandomDirectionNormal(rnd, velocity, 1);
+        var particle = new Particle(position, dir * 15, up, color, size, time, rnd.RandomDouble(1.5, 1.9));
+        fw.AddParticle(particle);
+      }
+    }
+
+    public override void OnLivingEffect (double time, double dt, Fireworks fw)
+    {
+      double frequency = 200;
+      double probability = dt * frequency;
+
+      while (probability > 1.0 ||
+             Helpers.DefaultRandom.UniformNumber() < probability)
+      {
+        Vector3d dir = Geometry.RandomDirectionNormal(Helpers.DefaultRandom, -velocity, 0.3);
+        var particle = new Particle(position, dir * 15, up, color, size, time, Helpers.DefaultRandom.RandomDouble(0.2, 0.4));
+        fw.AddParticle(particle);
+
+        probability -= 1.0;
+      }
+      base.OnLivingEffect(time, dt, fw);
+    }
+
+    public override uint Triangles { get; } = 10 * 2;
+    public override uint TriVertices { get; } = 20 * 2;
+    /// <summary>
+    /// Weight of the object
+    /// </summary>
+    public override double Mass { get; } = 1;
+    public Rocket(Vector3d pos, Vector3d vel, Vector3d _up, Vector3 col, double siz, double time, double age) : base(pos, vel, _up, col, siz, time, age)
+    {
+    }
+
+    public override unsafe int TriangleVertices (ref float* ptr, ref uint origin, out int stride, bool txt, bool col, bool normal, bool ptsize)
+    {
+      stride = 3;
+      if (txt)
+        stride += 2;
+      if (col)
+        stride += 3;
+      if (normal)
+        stride += 3;
+      if (ptsize)
+        stride++;
+
+      if (ptr != null)
+      {
+        Helpers.CubeDraw(LowerSquareSizeBody, UpperSquareSizeBody, 0, HeightBody, position,
+          ref ptr, txt, col, normal, ptsize, color, color, color, color, color, velocity.Normalized());
+        Helpers.CubeDraw(LowerSquareSizeHead, UpperSquareSizeHead, HeightBody, HeightBody + HeightHead, position,
+          ref ptr, txt, col, normal, ptsize, color, color, color, color, color, velocity.Normalized());
+      }
+      origin += TriVertices;
+      return (int)TriVertices * (stride *= sizeof(float));
+    }
+
+    public override unsafe int TriangleIndices (ref uint* ptr, uint origin)
+    {
+      uint index = 0;
+
+      if (ptr != null)
+      {
+        Helpers.UpdateTriangleIndicesForCube(Triangles / 2, ref ptr, origin, ref index);
+      }
+
+      return (3 * (int)Triangles) * sizeof(uint);
+    }
+  }
+
+  public partial class Fireworks
+  {
+    /// <summary>
+    /// [Re-]initialize the simulation system.
+    /// </summary>
+    /// <param name="param">User-provided parameter string.</param>
+    public void Reset (string param)
+    {
+      // input params:
+      Update(param);
+
+      // initialization job itself:
+      particles.Clear();
+      launchers.Clear();
+
+      Launcher l1 = new CutSquarePyramidLauncher(Helpers.ColorVectorFrom(0x006400), freq, new Vector3d(10.0, 0.0, -10.0),
+        null, new Vector3d(-0.5, 0.0, -0.5));
+      Launcher l2 = new CutSquarePyramidLauncher(Helpers.ColorVectorFrom(0xbc8f8f), freq, new Vector3d(10.0, 0.0, 0.0),
+        null, new Vector3d(-0.5, 0.0, -0.5));
+      Launcher l3 = new CutSquarePyramidLauncher(Helpers.ColorVectorFrom(0xff4500), freq, new Vector3d(10.0, 0.0, 10.0),
+        null, new Vector3d(-0.5, 0.0, -0.5));
+      Launcher l4 = new CutSquarePyramidLauncher(Helpers.ColorVectorFrom(0xffd700), freq, new Vector3d(0.0, 0.0, 10.0),
+        null, new Vector3d(-0.5, 0.0, -0.5));
+      Launcher l5 = new CutSquarePyramidLauncher(Helpers.ColorVectorFrom(0x00ff00), freq, new Vector3d(0.0, 0.0, 0.0),
+        null, new Vector3d(-0.5, 0.0, -0.5));
+      Launcher l6 = new CutSquarePyramidLauncher(Helpers.ColorVectorFrom(0x4169e1), freq, new Vector3d(0.0, 0.0, -10.0),
+        null, new Vector3d(-0.5, 0.0, -0.5));
+      Launcher l7 = new CutSquarePyramidLauncher(Helpers.ColorVectorFrom(0x00ffff), freq, new Vector3d(-10.0, 0.0, 10.0),
+        null, new Vector3d(-0.5, 0.0, -0.5));
+      Launcher l8 = new CutSquarePyramidLauncher(Helpers.ColorVectorFrom(0x0000ff), freq, new Vector3d(-10.0, 0.0, 0.0),
+        null, new Vector3d(-0.5, 0.0, -0.5));
+      Launcher l9 = new CutSquarePyramidLauncher(Helpers.ColorVectorFrom(0xff1493), freq, new Vector3d(-10.0, 0.0, -10.0),
+        null, new Vector3d(-0.5, 0.0, -0.5));
+      AddLauncher(l1);
+      AddLauncher(l2);
+      AddLauncher(l3);
+      AddLauncher(l4);
+      AddLauncher(l5);
+      AddLauncher(l6);
+      AddLauncher(l7);
+      AddLauncher(l8);
+      AddLauncher(l9);
+
+      Frames = 0;
+      Time = 0.0f;
+      Running = true;
+    }
+
+
+    /// <summary>
+    /// Do one step of simulation.
+    /// </summary>
+    /// <param name="time">Required target time.</param>
+    public void Simulate (double time)
+    {
+      if (!Running)
+        return;
+
+      Frames++;
+
+      // clean the work table:
+      newParticles.Clear();
+      expiredParticles.Clear();
+
+      int i;
+      bool oddFrame = (Frames & 1) > 0;
+
+      // simulate launchers:
+      if (oddFrame)
+        for (i = 0; i < launchers.Count; i++)
+          launchers[i].Simulate(time, this);
+      else
+        for (i = launchers.Count; --i >= 0;)
+          launchers[i].Simulate(time, this);
+
+      // simulate particles:
+      if (oddFrame)
+      {
+        for (i = 0; i < particles.Count; i++)
+          if (!particles[i].Simulate(time, this))
+            expiredParticles.Add(i);
+      }
+      else
+        for (i = particles.Count; --i >= 0;)
+          if (!particles[i].Simulate(time, this))
+            expiredParticles.Add(i);
+
+      // remove expired particles:
+      expiredParticles.Sort(ReverseComparer);
+      foreach (int j in expiredParticles)
+        particles.RemoveAt(j);
+
+      // add new particles:
+      foreach (var p in newParticles)
+        particles.Add(p);
+
+      Time = time;
+    }
+
+    /// <summary>
+    /// Update simulation parameters.
+    /// </summary>
+    /// <param name="param">User-provided parameter string.</param>
+    public void Update (string param)
+    {
+      // input params:
+      Dictionary<string, string> p = Util.ParseKeyValueList( param );
+      if (p.Count == 0)
+        return;
+
+      // launchers: frequency
+      if (Util.TryParse(p, "freq", ref freq))
+      {
+        if (freq < 1.0)
+          freq = 10.0;
+        foreach (var l in launchers)
+          l.frequency = freq;
+      }
+
+      // launchers: variance
+      if (Util.TryParse(p, "variance", ref variance))
+      {
+        if (variance < 0.0)
+          variance = 0.0;
+      }
+
+      // global: maxParticles
+      if (Util.TryParse(p, "max", ref maxParticles))
+      {
+        if (maxParticles < 10)
+          maxParticles = 1000;
+        Dirty = true;
+      }
+
+      // global: ticks
+      if (Util.TryParse(p, "ticks", ref ticks))
+      {
+        if (ticks < 0)
+          ticks = 0;
+
+        axes = new CoordinateAxes(1.0f, ticks, ticks, ticks);
+        Dirty = true;
+      }
+
+      // global: slow-motion coeff
+      if (!Util.TryParse(p, "slow", ref slow) ||
+          slow < 1.0e-4)
+        slow = 0.25;
+
+      // global: screencast
+      bool recent = false;
+      if (Util.TryParse(p, "screencast", ref recent) &&
+          (Form1.screencast != null) != recent)
+        Form1.StartStopScreencast(recent);
+
+      // particles: dynamic behavior
+      bool dyn = false;
+      if (Util.TryParse(p, "dynamic", ref dyn))
+        particleDynamic = dyn;
+    }
+  }
+
+  public partial class Particle
+  {
+    public virtual void OnDescrution(double time, Fireworks fw)
+    {
+
+    }
+    public virtual void OnLivingEffect(double time, double dt, Fireworks fw)
+    {
+
+    }
+
+    /// <summary>
+    /// Weight of the object
+    /// </summary>
+    public virtual double Mass { get; } = 1;
+    /// <summary>
+    /// Simulate object to the given time.
+    /// </summary>
+    /// <param name="time">Required target time.</param>
+    /// <param name="fw">Simulation context.</param>
+    /// <returns>False in case of expiry.</returns>
+    public bool Simulate (double time, Fireworks fw)
+    {
+      if (time <= simTime)
+        return true;
+
+      if (time > maxAge)
+      {
+        OnDescrution(time, fw);
+        return false;
+      }
+
+      // fly the particle:
+      double dt = time - simTime;
+      position += dt * velocity;
+
+      Vector3d drag = CalculateDrag();
+      OnLivingEffect(time, dt, fw);
+      if (fw.particleDynamic)
+      {
+        velocity += dt * -Helpers.Gravity * Helpers.NormalUp * Mass; //gravitation
+        velocity -= drag; // drag force
+        double extinction = Math.Pow(0.9, dt);
+        size *= extinction;
+        color *= (float)extinction;
+      }
+
+      simTime = time;
+
+      return true;
+    }
+
+    protected virtual Vector3d CalculateDrag ()
+    {
+      //return Vector3d.Zero;
+      double K1 = 0.0001;
+      double K2 = 0.0002;
+      var speed = velocity.Length;
+      Vector3d oposite = -velocity.Normalized();
+      var drag = (K1 * speed + K2 * speed * speed) * oposite;
+      return -drag;
+    }
+  }
+
+  public partial class Form1
+  {
+    /// <summary>
+    /// Form-data initialization.
+    /// </summary>
+    static void InitParams (out string param, out string tooltip, out string name, out MouseButtons trackballButton, out Vector3 center, out float diameter,
+      out bool useTexture, out bool globalColor, out bool useNormals, out bool usePtSize)
+    {
+      param = "freq=3.0,max=60000,slow=0.25,dynamic=1,variance=0.1,ticks=0";
+      tooltip = "freq,max,slow,dynamic,variance,ticks,screencast";
+      trackballButton = MouseButtons.Left;
+      center = new Vector3(0.0f, 1.0f, 0.0f);
+      diameter = 5.0f;
+      useTexture = false;
+      globalColor = false;
+      useNormals = false;
+      usePtSize = true;
+
+      name = "Miroslav Valach";
+    }
+  }
+  #endregion
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  #region FillerCode
   /// <summary>
   /// Rocket/particle launcher.
   /// Primary purpose: generate rockets/particles.
@@ -51,7 +659,7 @@ namespace _087fireworks
     /// <summary>
     /// Shared random generator. Should be Locked if used in multi-thread environment.
     /// </summary>
-    static RandomJames rnd = new RandomJames();
+    public static RandomJames rnd = new RandomJames();
 
     /// <summary>
     /// Simulate object to the given time.
@@ -59,7 +667,7 @@ namespace _087fireworks
     /// <param name="time">Required target time.</param>
     /// <param name="fw">Simulation context.</param>
     /// <returns>False in case of expiry.</returns>
-    public bool Simulate (double time, Fireworks fw)
+    public virtual bool Simulate (double time, Fireworks fw)
     {
       if (time <= simTime)
         return true;
@@ -195,7 +803,7 @@ namespace _087fireworks
   /// Fireworks particle - active (rocket) or passive (glowing particle) element
   /// of the simulation. Rendered usually by a GL_POINT primitive.
   /// </summary>
-  public class Particle : DefaultRenderObject
+  public partial class Particle : DefaultRenderObject
   {
     /// <summary>
     /// Current particle position.
@@ -232,6 +840,7 @@ namespace _087fireworks
     /// </summary>
     public double simTime;
 
+
     public Particle (Vector3d pos, Vector3d vel, Vector3d _up, Vector3 col, double siz, double time, double age)
     {
       position = pos;
@@ -242,38 +851,7 @@ namespace _087fireworks
       simTime = time;
       maxAge = time + age;
     }
-
-    /// <summary>
-    /// Simulate object to the given time.
-    /// </summary>
-    /// <param name="time">Required target time.</param>
-    /// <param name="fw">Simulation context.</param>
-    /// <returns>False in case of expiry.</returns>
-    public bool Simulate (double time, Fireworks fw)
-    {
-      if (time <= simTime)
-        return true;
-
-      if (time > maxAge)
-        return false;
-
-      // fly the particle:
-      double dt = time - simTime;
-      position += dt * velocity;
-
-      if (fw.particleDynamic)
-      {
-        velocity += dt * -0.05 * up;
-        double extinction = Math.Pow(0.9, dt);
-        size *= extinction;
-        color *= (float)extinction;
-      }
-
-      simTime = time;
-
-      return true;
-    }
-
+    
     //--- rendering ---
 
     public override uint Points => 1;
@@ -313,7 +891,7 @@ namespace _087fireworks
   /// Fireworks instance.
   /// Global framework for the simulation.
   /// </summary>
-  public class Fireworks
+  public partial class Fireworks
   {
     /// <summary>
     /// Set of active particles.
@@ -443,91 +1021,6 @@ namespace _087fireworks
       axes = new CoordinateAxes(1.0f, ticks, ticks, ticks);
     }
 
-    /// <summary>
-    /// [Re-]initialize the simulation system.
-    /// </summary>
-    /// <param name="param">User-provided parameter string.</param>
-    public void Reset (string param)
-    {
-      // input params:
-      Update(param);
-
-      // initialization job itself:
-      particles.Clear();
-      launchers.Clear();
-
-      Launcher l = new Launcher(freq, new Vector3d(-0.5, 0.0, 0.0), null, new Vector3d(-0.5, 0.0, -0.5));
-      AddLauncher(l);
-      l = new Launcher(freq, new Vector3d(0.5, 0.0, 0.0));
-      AddLauncher(l);
-
-      Frames = 0;
-      Time = 0.0f;
-      Running = true;
-    }
-
-    /// <summary>
-    /// Update simulation parameters.
-    /// </summary>
-    /// <param name="param">User-provided parameter string.</param>
-    public void Update (string param)
-    {
-      // input params:
-      Dictionary<string, string> p = Util.ParseKeyValueList( param );
-      if (p.Count == 0)
-        return;
-
-      // launchers: frequency
-      if (Util.TryParse(p, "freq", ref freq))
-      {
-        if (freq < 1.0)
-          freq = 10.0;
-        foreach (var l in launchers)
-          l.frequency = freq;
-      }
-
-      // launchers: variance
-      if (Util.TryParse(p, "variance", ref variance))
-      {
-        if (variance < 0.0)
-          variance = 0.0;
-      }
-
-      // global: maxParticles
-      if (Util.TryParse(p, "max", ref maxParticles))
-      {
-        if (maxParticles < 10)
-          maxParticles = 1000;
-        Dirty = true;
-      }
-
-      // global: ticks
-      if (Util.TryParse(p, "ticks", ref ticks))
-      {
-        if (ticks < 0)
-          ticks = 0;
-
-        axes = new CoordinateAxes(1.0f, ticks, ticks, ticks);
-        Dirty = true;
-      }
-
-      // global: slow-motion coeff
-      if (!Util.TryParse(p, "slow", ref slow) ||
-          slow < 1.0e-4)
-        slow = 0.25;
-
-      // global: screencast
-      bool recent = false;
-      if (Util.TryParse(p, "screencast", ref recent) &&
-          (Form1.screencast != null) != recent)
-        Form1.StartStopScreencast(recent);
-
-      // particles: dynamic behavior
-      bool dyn = false;
-      if (Util.TryParse(p, "dynamic", ref dyn))
-        particleDynamic = dyn;
-    }
-
     public void AddLauncher (Launcher la)
     {
       if (launchers.Count < MaxLaunchers)
@@ -541,57 +1034,7 @@ namespace _087fireworks
     }
 
     static IComparer<int> ReverseComparer = new ReverseComparer<int>();
-
-    /// <summary>
-    /// Do one step of simulation.
-    /// </summary>
-    /// <param name="time">Required target time.</param>
-    public void Simulate (double time)
-    {
-      if (!Running)
-        return;
-
-      Frames++;
-
-      // clean the work table:
-      newParticles.Clear();
-      expiredParticles.Clear();
-
-      int i;
-      bool oddFrame = (Frames & 1) > 0;
-
-      // simulate launchers:
-      if (oddFrame)
-        for (i = 0; i < launchers.Count; i++)
-          launchers[i].Simulate(time, this);
-      else
-        for (i = launchers.Count; --i >= 0;)
-          launchers[i].Simulate(time, this);
-
-      // simulate particles:
-      if (oddFrame)
-      {
-        for (i = 0; i < particles.Count; i++)
-          if (!particles[i].Simulate(time, this))
-            expiredParticles.Add(i);
-      }
-      else
-        for (i = particles.Count; --i >= 0;)
-          if (!particles[i].Simulate(time, this))
-            expiredParticles.Add(i);
-
-      // remove expired particles:
-      expiredParticles.Sort(ReverseComparer);
-      foreach (int j in expiredParticles)
-        particles.RemoveAt(j);
-
-      // add new particles:
-      foreach (var p in newParticles)
-        particles.Add(p);
-
-      Time = time;
-    }
-
+    
     /// <summary>
     /// Prepares (fills) all the triangle-related data into the provided vertex buffer and index buffer.
     /// </summary>
@@ -710,25 +1153,6 @@ namespace _087fireworks
 
   public partial class Form1
   {
-    /// <summary>
-    /// Form-data initialization.
-    /// </summary>
-    static void InitParams (out string param, out string tooltip, out string name, out MouseButtons trackballButton, out Vector3 center, out float diameter,
-                            out bool useTexture, out bool globalColor, out bool useNormals, out bool usePtSize)
-    {
-      param           = "freq=4000.0,max=60000,slow=0.25,dynamic=1,variance=0.1,ticks=0";
-      tooltip         = "freq,max,slow,dynamic,variance,ticks,screencast";
-      trackballButton = MouseButtons.Left;
-      center          = new Vector3(0.0f, 1.0f, 0.0f);
-      diameter        = 5.0f;
-      useTexture      = false;
-      globalColor     = false;
-      useNormals      = false;
-      usePtSize       = true;
-
-      name = "Josef Pelikán";
-    }
-
     /// <summary>
     /// Set real-world coordinates of the camera/light source.
     /// </summary>
@@ -1398,4 +1822,6 @@ namespace _087fireworks
       primitiveCounter += 12;
     }
   }
+
+  #endregion
 }
